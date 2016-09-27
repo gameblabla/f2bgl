@@ -1,13 +1,12 @@
+CXX := g++
+SDL_CFLAGS = `sdl-config --cflags`
+SDL_LIBS = `sdl-config --libs`
 
-SDL_CFLAGS = `sdl2-config --cflags`
-SDL_LIBS = `sdl2-config --libs`
+#DEFINES = -DF2B_DEBUG 
+DEFINES = -DGLES_FUNCTION
+LIBS = $(SDL_LIBS) -lGL
 
-#DEFINES = -DF2B_DEBUG
-
-LIBS = $(SDL_LIBS) -lGL -lz
-
-CXX := clang++
-CXXFLAGS := -g -O -Wall -Wuninitialized -Wno-sign-compare
+CXXFLAGS := -g -O0 -Wall -Wuninitialized -Wno-sign-compare 
 
 SRCS = box.cpp camera.cpp collision.cpp cutscene.cpp decoder.cpp file.cpp \
 	font.cpp game.cpp input.cpp inventory.cpp main.cpp menu.cpp mixer.cpp \
@@ -16,9 +15,8 @@ SRCS = box.cpp camera.cpp collision.cpp cutscene.cpp decoder.cpp file.cpp \
 	trigo.cpp util.cpp
 
 OBJS = $(SRCS:.cpp=.o)
-DEPS = $(SRCS:.cpp=.d)
 
-CXXFLAGS += -MMD $(DEFINES) $(SDL_CFLAGS)
+CXXFLAGS +=  $(DEFINES) $(SDL_CFLAGS)
 
 f2bgl: $(OBJS)
 	$(CXX) -o $@ $^ $(LIBS)

@@ -602,6 +602,9 @@ struct Game {
 	void drawSceneObject(SceneObject *so);
 	void redrawScene();
 	void drawWall(const Vertex *vertices, int verticesCount, int texture);
+#ifdef BUFFER_TEXTPOLYGONS
+	void cached_drawWall(const Vertex *vertices, int verticesCount, int texture);
+#endif
 	bool redrawSceneGridCell(int x, int z, CellMap *cell);
 	void redrawSceneGroundWalls();
 	bool findRoom(const CollisionSlot *colSlot, int room1, int room2);
@@ -704,7 +707,7 @@ struct Game {
 	int op_setVar(int argc, int32_t *argv);
 	int op_compareConst(int argc, int32_t *argv);
 	int op_evalVar(int argc, int32_t *argv);
-	int op_playSound(int argc, int32_t *argv);
+	int NULLED(int argc, int32_t *argv);
 	int op_getAngle(int argc, int32_t *argv);
 	int op_setObjectData(int argc, int32_t *argv);
 	int op_evalObjectData(int argc, int32_t *argv);
@@ -768,6 +771,7 @@ struct Game {
 	int op_debugBreakpoint(int argc, int32_t *argv);
 	int op_isObjectConradNotVisible(int argc, int32_t *argv);
 	int op_stopSound(int argc, int32_t *argv);
+	int op_playSound(int argc, int32_t *argv) ;
 
 	// raycast.cpp
 	void rayCastInit(int sx);

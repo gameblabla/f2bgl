@@ -31,11 +31,7 @@ static const struct {
 #ifdef __amigaos4__
 	{ GL_RGB5_A1, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV, &convert_BGRA_1555 },
 #endif
-#ifdef USE_GLES
 	{ GL_RGBA, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, &convert_RGBA_5551 },
-#else
-	{ GL_RGB5_A1, GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1,     &convert_RGBA_5551 },
-#endif
 	{ -1, -1, -1, 0 }
 };
 

@@ -442,7 +442,7 @@ bool Cutscene::play() {
 	_render->setupProjection(kProjDefault);
 	_render->copyToOverlay(0, 0, _frameBuffers[0], _fileHdr.videoFrameWidth, _fileHdr.videoFrameWidth, _fileHdr.videoFrameHeight);
 	const PlayerInput &inp = _game->inp;
-	_interrupted = inp.spaceKey || inp.enterKey;
+	_interrupted = (inp.spaceKey || inp.enterKey || inp.ctrlKey || inp.altKey || inp.spaceKey || inp.jumpKey);
 	return !_interrupted;
 }
 

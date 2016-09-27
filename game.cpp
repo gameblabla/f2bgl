@@ -714,6 +714,9 @@ void Game::updatePalette() {
 }
 
 void Game::loadSceneMap(int16_t key) {
+#ifdef BUFFER_TEXTPOLYGONS
+	_render->flushQuads();
+#endif
 	assert(key != 0);
 	uint8_t *p = _res.getData(kResType_MAP, key, "MAP3D");
 	_sceneCamerasCount = READ_LE_UINT32(p + 24);
@@ -1546,8 +1549,8 @@ static const Game::OpcodeProc _opcodeTable[kOpcodesCount] = {
 	&Game::op_compareConst,
 	// 8
 	&Game::op_evalVar,
-	&Game::op_playSound,
-	0, // &Game::op_isCurrentObjectInDrawList, // unused
+	&Game::NULLED,
+	&Game::NULLED, // &Game::op_isCurrentObjectInDrawList, // unused
 	&Game::op_getAngle,
 	// 12
 	&Game::op_setObjectData,
@@ -1571,7 +1574,7 @@ static const Game::OpcodeProc _opcodeTable[kOpcodesCount] = {
 	&Game::op_removeObjectMessage,
 	// 28
 	&Game::op_setBoxItem,
-	0, // &Game::op_fadePalette, // unused
+	&Game::NULLED, // &Game::op_fadePalette, // unused
 	&Game::op_isObjectMoving,
 	&Game::op_getMessageInfo,
 	// 32
@@ -1615,9 +1618,9 @@ static const Game::OpcodeProc _opcodeTable[kOpcodesCount] = {
 	&Game::op_drawNumber,
 	&Game::op_isObjectOnMap,
 	// 64
-	0, // &Game::op_isCollidingLine, // unused
+	&Game::NULLED, // &Game::op_isCollidingLine, // unused
 	&Game::op_updateFollowingObject,
-	0, // &Game::op_rotateCoords, // unused
+	&Game::NULLED, // &Game::op_rotateCoords, // unused
 	&Game::op_translateObject2,
 	// 68
 	&Game::op_updateCollidingHorizontalMask,
@@ -2873,6 +2876,10 @@ bool Game::getMessage(int16_t key, uint32_t value, ResMessageDescription *desc) 
 	return offset != -1 && _res.getMessageDescription(desc, value, offset);
 }
 
+#ifdef BUFFER_FLATPOLYGONS
+float floorY=0;
+#endif
+
 void Game::drawSceneObjectMesh(const uint8_t *polygonsData, const uint8_t *verticesData, int verticesCount) {
 	if (polygonsData[0] & 0x80) {
 		const int shadowPolySize = -(int8_t)polygonsData[0];
@@ -2959,10 +2966,16 @@ void Game::drawSceneObjectMesh(const uint8_t *polygonsData, const uint8_t *verti
 		count = *polygonsData++;
 		color = READ_LE_UINT16(polygonsData); polygonsData += 2;
 	}
+#ifdef BUFFER_FLATPOLYGONS
+	_render->flushPolygonFlat(floorY*2, false);
+#endif
 }
 
 void Game::drawSceneObject(SceneObject *so) {
 	if (so->verticesCount != 0) {
+#ifdef BUFFER_FLATPOLYGONS
+		floorY = so->y / (float)(1 << kPosShift);
+#endif
 		_render->beginObjectDraw(so->x, so->y, so->z, so->o->pitch, kPosShift);
 		assert(so->polygonsData != 0 && so->verticesData != 0);
 		drawSceneObjectMesh(so->polygonsData, so->verticesData, so->verticesCount);
@@ -2994,6 +3007,22 @@ void Game::redrawScene() {
 	++_rayCastCounter;
 	redrawSceneGroundWalls();
 }
+
+#ifdef BUFFER_TEXTPOLYGONS
+void Game::cached_drawWall(const Vertex *vertices, int verticesCount, int texture) {
+	texture &= 4095;
+	if (texture >= 0  && texture < 512) {
+		_sceneAnimationsTable[texture].type |= 0x10;
+		if (texture != 0 && texture != 1) {
+			SpriteImage *spr = &_sceneAnimationsTextureTable[texture];
+			if (spr->data) {
+				const uint8_t *texData = _spriteCache.getData(spr->key, spr->data);
+				_render->cached_drawPolygonTexture(vertices, verticesCount, 0, texData, spr->w, spr->h, spr->key);
+			}
+		}
+	}
+}
+#endif
 
 void Game::drawWall(const Vertex *vertices, int verticesCount, int texture) {
 	texture &= 4095;
@@ -3102,9 +3131,13 @@ static void initVerticesGround(Vertex *quad, int x, int z) {
 bool Game::redrawSceneGridCell(int x, int z, CellMap *cell) {
 	Vertex quad[4];
 	initVerticesGround(quad, x, z);
+#ifdef BUFFER_TEXTPOLYGONS
+	int visible = _render->isQuadInFrustrum(quad, 4);
+#else
 	if (!_render->isQuadInFrustrum(quad, 4)) {
 		return false;
 	}
+#endif
 	if (cell->type != 32) {
 		const int index = _sceneGroundMap[x][z];
 		if (index >= 0 && index < 512) {
@@ -3113,14 +3146,36 @@ bool Game::redrawSceneGridCell(int x, int z, CellMap *cell) {
 				SpriteImage *spr = &_sceneAnimationsTextureTable[index];
 				if (spr->data) {
 					const uint8_t *texData = _spriteCache.getData(spr->key, spr->data);
+#ifdef BUFFER_TEXTPOLYGONS
+					_render->cached_drawPolygonTexture(quad, 4, 9, texData, spr->w, spr->h, spr->key);
+#else
 					_render->drawPolygonTexture(quad, 4, 9, texData, spr->w, spr->h, spr->key);
+#endif
 				}
 			}
 		}
 	}
+
+
+
+#ifdef BUFFER_TEXTPOLYGONS
+	if (cell->type == 1) {
+		initVerticesW(quad, x, z, 0, 0);
+		cached_drawWall(quad, 4, cell->west);
+		initVerticesS(quad, x, z, 0, 0);
+		cached_drawWall(quad, 4, cell->south);
+		initVerticesE(quad, x, z, 0, 0);
+		cached_drawWall(quad, 4, cell->east);
+		initVerticesN(quad, x, z, 0, 0);
+		cached_drawWall(quad, 4, cell->north);
+	}
+	else if ((cell->type > 0) && visible) {
+#else
 	if (cell->type > 0) {
+#endif
 		int dx = 0, dz = 0;
 		switch (cell->type) {
+#ifndef BUFFER_TEXTPOLYGONS
 		case 1:
 			initVerticesW(quad, x, z, 0, 0);
 			drawWall(quad, 4, cell->west);
@@ -3131,6 +3186,7 @@ bool Game::redrawSceneGridCell(int x, int z, CellMap *cell) {
 			initVerticesN(quad, x, z, 0, 0);
 			drawWall(quad, 4, cell->north);
 			break;
+#endif
 		case 3:
 			initVerticesS(quad, x, z, 0, 0);
 			drawWall(quad, 4, cell->texture[1]);
@@ -3190,7 +3246,11 @@ bool Game::redrawSceneGridCell(int x, int z, CellMap *cell) {
 			break;
 		}
 	}
+#ifndef BUFFER_TEXTPOLYGONS
 	return true;
+#else
+	return visible;
+#endif
 }
 
 void Game::redrawSceneGroundWalls() {
@@ -3221,6 +3281,9 @@ case 32: // fixes objects on hole (level 4)
 			}
 		}
 	}
+#ifdef BUFFER_TEXTPOLYGONS
+	_render->renderQuads();
+#endif
 }
 
 bool Game::findRoom(const CollisionSlot *colSlot, int room1, int room2) {

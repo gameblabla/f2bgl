@@ -2318,3 +2318,7 @@ int Game::op_stopSound(int argc, int32_t *argv) {
 	_snd.stopSfx(_currentObject->objKey, argv[0]);
 	return -1;
 }
+
+int Game::NULLED(int argc, int32_t *argv) {
+	return -1;
+}

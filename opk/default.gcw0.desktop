@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Fade to Black
+Comment=Fade to Black
+Exec=f2bgl
+Icon=icon
+Terminal=false
+Categories=games;
+X-OD-NeedsDownscaling=false

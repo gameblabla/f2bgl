@@ -87,61 +87,6 @@ struct StdioFile: File {
 	}
 };
 
-struct GzipFile: File {
-	gzFile _fp;
-
-	virtual bool open(const char *path, const char *mode) {
-		_fp = gzopen(path, mode);
-		return _fp != 0;
-	}
-	virtual void close() {
-		if (_fp) {
-			gzclose(_fp);
-			_fp = 0;
-		}
-	}
-	virtual int eof() {
-		if (_fp) {
-			return gzeof(_fp);
-		}
-		return 0;
-	}
-	virtual int err() {
-		if (_fp) {
-			int errnum;
-			gzerror(_fp, &errnum);
-			return errnum != Z_OK;
-		}
-		return 0;
-	}
-	virtual int tell() {
-		if (_fp) {
-			return gztell(_fp);
-		}
-		return 0;
-	}
-	virtual int seek(int pos, int whence) {
-		if (_fp) {
-			const int ret = gzseek(_fp, pos, whence);
-			if (ret == -1) {
-				return ret;
-			}
-		}
-		return 0;
-	}
-	virtual int read(void *p , int size) {
-		if (_fp) {
-			return gzread(_fp, p, size);
-		}
-		return 0;
-	}
-	virtual int write(const void *p, int size) {
-		if (_fp) {
-			return gzwrite(_fp, p, size);
-		}
-		return 0;
-	}
-};
 
 bool g_isDemo = false;
 static int _fileLanguage;
@@ -187,7 +132,7 @@ static File *fileOpenIntern(const char *fileName, int fileType) {
 		switch (fileType) {
 		case kFileType_LOAD:
 		case kFileType_SAVE:
-			fp = new GzipFile;
+			fp = new StdioFile;
 			break;
 		case kFileType_SCREENSHOT:
 			fp = new StdioFile;

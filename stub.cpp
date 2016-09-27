@@ -11,6 +11,8 @@
 #include "render.h"
 #include "stub.h"
 
+extern char home_directory[128];
+
 static const char *USAGE =
 	"Fade2Black/OpenGL\n"
 	"Usage: f2b [OPTIONS]...\n"
@@ -35,7 +37,7 @@ static const struct {
 };
 
 static FileLanguage parseLanguage(const char *language) {
-	for (int i = 0; i < ARRAYSIZE(_languages); ++i) {
+	for (unsigned int i = 0; i < ARRAYSIZE(_languages); ++i) {
 		if (strcasecmp(_languages[i].str, language) == 0) {
 			return _languages[i].lang;
 		}
@@ -47,7 +49,7 @@ static FileLanguage parseVoice(const char *voice, FileLanguage lang) {
 	switch (lang) {
 	case kFileLanguage_SP:
 	case kFileLanguage_IT:
-		for (int i = 0; i < ARRAYSIZE(_languages); ++i) {
+		for (unsigned int i = 0; i < ARRAYSIZE(_languages); ++i) {
 			if (strcasecmp(_languages[i].str, voice) == 0) {
 				if (_languages[i].voice) {
 					return _languages[i].lang;
@@ -210,9 +212,13 @@ struct GameStub_F2B : GameStub {
 		language = 0;
 		free(voice);
 		voice = 0;
-		if (!fileInit(fileLanguage, fileVoice, _dataPath ? _dataPath : ".", _savePath ? _savePath : ".")) {
+		//if (!fileInit(fileLanguage, fileVoice, _dataPath ? _dataPath : ".", _savePath ? _savePath : ".")) {
+		if (!fileInit(fileLanguage, fileVoice, home_directory, home_directory)) 
+		{
+			if (!fileInit(fileLanguage, fileVoice, ".", home_directory)) {
 			warning("Unable to find datafiles");
 			return -2;
+			}
 		}
 		_render = new Render;
 		_g = new Game(_render, &params);
